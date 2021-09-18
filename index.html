@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenId = parseInt(urlParams.get('tokenid')) || "0";
+
+      let scriptSource = "alert('not loaded yet');";
+      let started = false;
+      let features = {};
+
+      let tokenData = {
+        "hash": "0x",
+        "tokenId": tokenId
+      };
+
+      // Helper to decode bytes from the blockchain.
+      function hexToUtf8(hex) {
+        return decodeURIComponent('%' + hex.match(/.{1,2}/g).join('%'));
+      }
+
+      // Fetch script & token info from the contract.
+      let token_script_res = fetch("https://api.mainnet.tzkt.io/v1/contracts/KT1Fxz4V3LaUcVFpvF8pAAx8G3Z4H7p7hhDg/bigmaps/metadata/keys/metadata")
+      .then(function(response) {
+        return response.json();
+      }).then(function(data) {
+        const metadata = JSON.parse(hexToUtf8(data.value));
+        console.log("contract metadata: ", metadata);
+
+        let h3pScript = document.createElement("script");
+        h3pScript.textContent = metadata.script_source;
+        document.head.appendChild(h3pScript);
+        // This is a bug fix, accidentally left in a started = true in the script.
+        started = false;
+
+        let p5jsScript = document.createElement("script");
+        p5jsScript.setAttribute("src", "https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js");
+        p5jsScript.async = false;
+        document.body.appendChild(p5jsScript);
+        loadTokenMetadata();
+      });
+
+      function loadTokenMetadata() {
+        let token_hash_res = fetch("https://api.mainnet.tzkt.io/v1/contracts/KT1Fxz4V3LaUcVFpvF8pAAx8G3Z4H7p7hhDg/bigmaps/metadata/keys/token_"+ tokenId +"_metadata")
+        .then(function(response) {
+          return response.json();
+        })
+        .then(function(data) {
+          if (data && data['errors'] && data['errors'][0].status == 404) {
+            alert("Token ID not found.");
+          } else {
+            // Get the token hash from the NFT metadata.
+            tokenMetadata = JSON.parse(hexToUtf8(data['value']));
+            console.log("token metadata:", tokenMetadata);
+
+            tokenData.hash = tokenMetadata.token_hash;
+            started = true;
+            if (window.loop) {
+              loop();
+            }
+          }
+        });
+      }
+    </script>
+    <style type="text/css">
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      canvas {
+        padding: 0;
+        margin: auto;
+        display: block;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main></main>
+  </body>
+</html>
